@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>مصنع التطبيقات</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#EEF2F6;--card:#fff;--ink:#14213D;--mute:#5B6B82;--line:#D5DCE6;--acc:#0E7C86;--accink:#fff;--bad:#C2410C;--code:#101826;--codeink:#DCE6F5}
+@media (prefers-color-scheme:dark){:root{--bg:#0E1522;--card:#17202F;--ink:#E8EEF7;--mute:#98A6BC;--line:#2A3649;--acc:#3CB6C0;--accink:#06222A;--bad:#FB923C;--code:#0A101B;--codeink:#DCE6F5}}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{font-family:Cairo,system-ui,sans-serif;background:var(--bg);color:var(--ink);display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0)}
+main{flex:1;overflow:auto;padding:14px}
+section{display:none;max-width:720px;margin:0 auto}
+section.on{display:block}
+h2{font-size:18px;margin:4px 0 10px}
+label{display:block;font-size:13px;color:var(--mute);margin:12px 0 4px}
+input,select,textarea{width:100%;font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px}
+input[type=password],input[type=url],input.ltr{direction:ltr;text-align:left}
+textarea{resize:vertical}
+.code{direction:ltr;text-align:left;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;background:var(--code);color:var(--codeink);border:0;min-height:46vh;line-height:1.5;tab-size:2}
+button{font:inherit;font-weight:600;border:0;border-radius:10px;padding:10px 16px;background:var(--acc);color:var(--accink)}
+button.alt{background:transparent;color:var(--ink);border:1px solid var(--line)}
+button:disabled{opacity:.5}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.row>*{flex:1}
+.note{font-size:13px;color:var(--mute);margin:8px 0}
+.msg{font-size:13px;margin-top:8px;min-height:18px}
+.msg.err{color:var(--bad)}
+iframe{width:100%;height:55vh;border:1px solid var(--line);border-radius:10px;background:#fff;margin-top:10px}
+details{margin-top:14px;font-size:13px;color:var(--mute)}
+pre{direction:ltr;text-align:left;background:var(--code);color:var(--codeink);padding:10px;border-radius:10px;overflow-x:auto;font-size:12px}
+a.btn{display:block;text-align:center;text-decoration:none;font-weight:600;border-radius:10px;padding:12px 16px;background:var(--acc);color:var(--accink);margin-top:12px}
+a.btn.alt{background:transparent;color:var(--ink);border:1px solid var(--line)}
+nav{display:flex;border-top:1px solid var(--line);background:var(--card);padding-bottom:env(safe-area-inset-bottom,0)}
+nav button{flex:1;background:none;color:var(--mute);border-radius:0;padding:12px 4px;font-size:14px}
+nav button.on{color:var(--acc);box-shadow:inset 0 3px 0 var(--acc)}
+:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+</style>
+</head>
+<body>
+<main>
+
+<section id="keys" class="on">
+  <h2>مفاتيح API</h2>
+  <p class="note">المفاتيح تُحفظ في هذا الجهاز فقط ولا تُرسل إلا للخدمة نفسها.</p>
+  <label>مفتاح Claude</label>
+  <input type="password" id="k_claude" placeholder="sk-ant-...">
+  <label>مفتاح Gemini</label>
+  <input type="password" id="k_gemini" placeholder="AIza...">
+  <label>رابط مشروع Supabase</label>
+  <input type="url" id="k_sburl" placeholder="https://xxxx.supabase.co">
+  <label>مفتاح Supabase (anon public)</label>
+  <input type="password" id="k_sbkey">
+  <label>رمز GitHub (Personal Access Token)</label>
+  <input type="password" id="k_ghtoken" placeholder="github_pat_...">
+  <label>مستودع بناء APK</label>
+  <input id="k_ghrepo" class="ltr" placeholder="اسمك/apk-factory">
+  <div class="row">
+    <button id="saveKeys">حفظ المفاتيح</button>
+    <button class="alt" id="testSb">اختبار Supabase</button>
+  </div>
+  <div class="row"><button class="alt" id="testClaude">اختبار Claude</button><button class="alt" id="testGemini">اختبار Gemini</button></div>
+  <div class="msg" id="keysMsg"></div>
+  <details>
+    <summary>إنشاء جدول المشاريع في Supabase (مرة واحدة)</summary>
+    <p>الصق هذا في SQL Editor ثم شغّله:</p>
+<pre id="sql">create table if not exists projects (
+  name text primary key,
+  code text not null,
+  updated_at timestamptz default now()
+);
+alter table projects enable row level security;
+create policy "open" on projects
+  for all using (true) with check (true);</pre>
+    <p>هذه السياسة تفتح الجدول لأي شخص يملك المفتاح. استخدمها للتجربة فقط.</p>
+  </details>
+</section>
+
+<section id="edit">
+  <h2>الكود</h2>
+  <textarea id="code" class="code" spellcheck="false" placeholder="اكتب HTML/CSS/JS هنا أو اطلب من الذكاء الاصطناعي من تبويب «تعديل»"></textarea>
+  <div class="row">
+    <button id="run">تشغيل</button>
+    <button class="alt" id="clear">مسح</button>
+  </div>
+  <iframe id="out" sandbox="allow-scripts allow-forms allow-modals" title="الناتج" hidden></iframe>
+  <label>اسم المشروع</label>
+  <input id="pname" class="ltr" placeholder="my-site">
+  <div class="row">
+    <button class="alt" id="sbSave">حفظ في Supabase</button>
+    <button class="alt" id="sbLoad">فتح من Supabase</button>
+  </div>
+  <div class="msg" id="codeMsg"></div>
+</section>
+
+<section id="ai">
+  <h2>تعديل بالذكاء الاصطناعي</h2>
+  <label>النموذج</label>
+  <select id="prov">
+    <option value="claude">Claude</option>
+    <option value="gemini">Gemini</option>
+  </select>
+  <label>اسم النموذج</label>
+  <input id="model" class="ltr" list="mlist" autocomplete="off">
+  <datalist id="mlist"></datalist>
+  <div class="row"><button class="alt" id="loadModels">جلب النماذج</button></div>
+  <label>ماذا تريد أن يتغير؟</label>
+  <textarea id="ask" rows="5" placeholder="مثال: ابنِ صفحة لمتجر صغير بزر واتساب، أو غيّر اللون الرئيسي إلى الأخضر"></textarea>
+  <div class="row">
+    <button id="go">نفّذ التعديل</button>
+    <button class="alt" id="undo" disabled>تراجع</button>
+  </div>
+  <div class="msg" id="aiMsg"></div>
+  <p class="note">الكود الحالي يُرسل مع طلبك، والنتيجة تُوضع مباشرة في تبويب «الكود».</p>
+</section>
+
+<section id="apk">
+  <h2>بناء APK</h2>
+  <p class="note">يحوّل الكود الموجود في تبويب «الكود» إلى تطبيق أندرويد عبر GitHub. يستغرق نحو 5 دقائق، فابقَ في هذه الصفحة.</p>
+  <label>اسم التطبيق</label>
+  <input id="apname" placeholder="تطبيقي">
+  <div class="row"><button id="build">ابنِ APK</button></div>
+  <div class="msg" id="apkMsg"></div>
+  <div id="apkLink"></div>
+  <p class="note">عند فتح الملف يطلب أندرويد السماح بتثبيت التطبيقات من هذا المصدر. وافق مرة واحدة من شاشة الإعدادات التي تظهر.</p>
+</section>
+
+</main>
+
+<nav>
+  <button data-t="keys" class="on">المفاتيح</button>
+  <button data-t="edit">الكود</button>
+  <button data-t="ai">تعديل</button>
+  <button data-t="apk">APK</button>
+</nav>
+
+<script>
+const $=id=>document.getElementById(id);
+const store={
+  get(k){try{return localStorage.getItem(k)||""}catch(e){return ""}},
+  set(k,v){try{localStorage.setItem(k,v)}catch(e){}}
+};
+const KEYS=["claude","gemini","sburl","sbkey","ghtoken","ghrepo"];
+KEYS.forEach(k=>$("k_"+k).value=store.get("k_"+k));
+$("code").value=store.get("code");
+$("pname").value=store.get("pname");
+
+function say(id,t,err){const m=$(id);m.textContent=t;m.className="msg"+(err?" err":"")}
+
+// tabs
+document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{
+  document.querySelectorAll("nav button,section").forEach(e=>e.classList.remove("on"));
+  b.classList.add("on");$(b.dataset.t).classList.add("on");
+});
+
+$("saveKeys").onclick=()=>{KEYS.forEach(k=>store.set("k_"+k,$("k_"+k).value.trim()));say("keysMsg","تم حفظ المفاتيح")};
+$("code").oninput=()=>store.set("code",$("code").value);
+$("pname").oninput=()=>store.set("pname",$("pname").value);
+
+// run
+$("run").onclick=()=>{$("out").hidden=false;$("out").srcdoc=$("code").value};
+$("clear").onclick=()=>{if(confirm("مسح الكود؟")){$("code").value="";store.set("code","");$("out").hidden=true}};
+
+// supabase
+function sb(){
+  const u=store.get("k_sburl").replace(/\/$/,""),k=store.get("k_sbkey");
+  if(!u||!k)throw new Error("أدخل رابط ومفتاح Supabase في تبويب المفاتيح واحفظهما");
+  return {u,h:{apikey:k,Authorization:"Bearer "+k,"Content-Type":"application/json"}};
+}
+$("testSb").onclick=async()=>{
+  try{const {u,h}=sb();const r=await fetch(u+"/rest/v1/projects?select=name&limit=1",{headers:h});
+    say("keysMsg",r.ok?"Supabase متصل والجدول موجود":"فشل ("+r.status+"): "+(await r.text()).slice(0,120),!r.ok)}
+  catch(e){say("keysMsg",e.message,true)}
+};
+$("sbSave").onclick=async()=>{
+  try{const {u,h}=sb();const name=$("pname").value.trim();if(!name)throw new Error("اكتب اسم المشروع");
+    const r=await fetch(u+"/rest/v1/projects?on_conflict=name",{method:"POST",headers:{...h,Prefer:"resolution=merge-duplicates"},body:JSON.stringify({name,code:$("code").value,updated_at:new Date().toISOString()})});
+    say("codeMsg",r.ok?"تم الحفظ":"فشل: "+(await r.text()).slice(0,120),!r.ok)}
+  catch(e){say("codeMsg",e.message,true)}
+};
+$("sbLoad").onclick=async()=>{
+  try{const {u,h}=sb();const name=$("pname").value.trim();if(!name)throw new Error("اكتب اسم المشروع");
+    const r=await fetch(u+"/rest/v1/projects?name=eq."+encodeURIComponent(name)+"&select=code",{headers:h});
+    const d=await r.json();if(!r.ok)throw new Error(JSON.stringify(d).slice(0,120));
+    if(!d.length)throw new Error("لا يوجد مشروع بهذا الاسم");
+    $("code").value=d[0].code;store.set("code",d[0].code);say("codeMsg","تم الفتح")}
+  catch(e){say("codeMsg",e.message,true)}
+};
+
+// AI
+const NAME={claude:"Claude",gemini:"Gemini"};
+const SYS="أنت محرر كود. ستستلم الكود الحالي وطلب تعديل. أعد الكود الكامل بعد التعديل داخل كتلة ```html واحدة فقط، ملف HTML واحد مستقل يحوي CSS وJS. لا تكتب أي شرح خارج الكتلة. إن كان الكود الحالي فارغاً فابنِ من الصفر.";
+const DEF={claude:"claude-sonnet-5-5",gemini:"gemini-2.5-flash"};
+const LIST={claude:["claude-sonnet-5-5","claude-opus-5-5","claude-haiku-5-5"],gemini:["gemini-2.5-flash","gemini-2.5-pro","gemini-2.5-flash-lite"]};
+let prev=null,busy=false;
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+class AppErr extends Error{}
+
+function setList(p){$("mlist").innerHTML=LIST[p].map(m=>'<option value="'+m+'">').join("")}
+function fillModels(p){setList(p);$("model").value=store.get("m_"+p)||DEF[p]}
+$("prov").value=store.get("prov")||"claude";fillModels($("prov").value);
+$("prov").onchange=()=>{store.set("prov",$("prov").value);fillModels($("prov").value)};
+$("model").onchange=()=>store.set("m_"+$("prov").value,$("model").value.trim());
+
+function saveAll(){KEYS.forEach(k=>store.set("k_"+k,$("k_"+k).value.trim()))}
+function key(p){const k=store.get("k_"+p);if(!k)throw new AppErr("أدخل مفتاح "+NAME[p]+" في تبويب المفاتيح ثم اضغط حفظ");return k}
+function cHeaders(){return{"content-type":"application/json","x-api-key":key("claude"),"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"}}
+function gHeaders(){return{"content-type":"application/json","x-goog-api-key":key("gemini")}}
+
+function explain(s,d,p){
+  const m=(d&&d.error&&d.error.message)||"";
+  if(s===401||s===403||/api key not valid|invalid x-api-key/i.test(m))return "مفتاح "+NAME[p]+" غير صحيح أو لا يملك صلاحية. تأكد أنه منسوخ كاملاً بدون مسافات";
+  if(s===404)return "النموذج غير موجود. اضغط «جلب النماذج» واختر اسماً من القائمة";
+  if(s===429)return "تجاوزت الحد المسموح أو انتهى الرصيد. انتظر قليلاً أو راجع حسابك. "+m;
+  if(s===400)return "الطلب مرفوض: "+m;
+  if(s>=500)return "خدمة "+NAME[p]+" مشغولة الآن. حاول بعد قليل";
+  return "خطأ ("+s+") "+m;
+}
+async function http(url,opt,p,tries=3){
+  if(navigator.onLine===false)throw new AppErr("لا يوجد اتصال بالإنترنت");
+  for(let i=0;i<tries;i++){
+    const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),120000);
+    let r,d;
+    try{r=await fetch(url,{...opt,signal:ctl.signal});d=await r.json().catch(()=>({}))}
+    catch(e){
+      clearTimeout(t);
+      if(e.name==="AbortError")throw new AppErr("انتهت المهلة (دقيقتان). جرّب طلباً أصغر");
+      if(i<tries-1){await sleep(1500*(i+1));continue}
+      throw new AppErr("تعذر الاتصال بـ "+NAME[p]+". تأكد من الإنترنت وأعد المحاولة");
+    }
+    clearTimeout(t);
+    if(r.ok)return d;
+    if([429,500,502,503,529].includes(r.status)&&i<tries-1){await sleep(2000*(i+1));continue}
+    throw new AppErr(explain(r.status,d,p));
+  }
+}
+async function ask(p,model,system,prompt,max){
+  if(p==="claude"){
+    const d=await http("https://api.anthropic.com/v1/messages",{method:"POST",headers:cHeaders(),
+      body:JSON.stringify({model,max_tokens:max,system,messages:[{role:"user",content:prompt}]})},p);
+    return{text:(d.content||[]).filter(c=>c.type==="text").map(c=>c.text).join(""),cut:d.stop_reason==="max_tokens"};
+  }
+  const d=await http("https://generativelanguage.googleapis.com/v1beta/models/"+encodeURIComponent(model)+":generateContent",
+    {method:"POST",headers:gHeaders(),body:JSON.stringify({systemInstruction:{parts:[{text:system}]},contents:[{role:"user",parts:[{text:prompt}]}],generationConfig:{maxOutputTokens:max}})},p);
+  if(d.promptFeedback&&d.promptFeedback.blockReason)throw new AppErr("Gemini رفض الطلب ("+d.promptFeedback.blockReason+"). غيّر الصياغة");
+  const c=(d.candidates||[])[0];
+  const text=c&&c.content&&c.content.parts?c.content.parts.map(x=>x.text||"").join(""):"";
+  if(!c||(!text&&c.finishReason!=="MAX_TOKENS"))throw new AppErr("لم يرجع Gemini نصاً ("+((c&&c.finishReason)||"فارغ")+"). أعد المحاولة");
+  return{text,cut:c.finishReason==="MAX_TOKENS"};
+}
+function extract(t){
+  const re=/```[a-zA-Z]*\r?\n([\s\S]*?)```/g;let best="",m;
+  while((m=re.exec(t)))if(m[1].length>best.length)best=m[1];
+  if(!best){
+    const i=t.indexOf("```");
+    if(i>=0)best=t.slice(t.indexOf("\n",i)+1).replace(/```\s*$/,"");
+    else if(/<!doctype|<html/i.test(t))best=t;
+  }
+  return best.trim();
+}
+
+async function loadModels(){
+  const p=$("prov").value;
+  try{
+    say("aiMsg","جارٍ جلب النماذج...");
+    let ids;
+    if(p==="claude"){
+      const d=await http("https://api.anthropic.com/v1/models?limit=100",{headers:cHeaders()},p);
+      ids=(d.data||[]).map(m=>m.id);
+    }else{
+      const d=await http("https://generativelanguage.googleapis.com/v1beta/models?pageSize=100",{headers:gHeaders()},p);
+      ids=(d.models||[]).filter(m=>(m.supportedGenerationMethods||[]).includes("generateContent")).map(m=>m.name.replace("models/",""));
+    }
+    if(!ids.length)throw new AppErr("لم تُرجع الخدمة أي نموذج");
+    LIST[p]=ids;setList(p);
+    say("aiMsg","تم جلب "+ids.length+" نموذجاً. اضغط على خانة النموذج لاختيار أحدها");
+  }catch(e){say("aiMsg",e.message,true)}
+}
+$("loadModels").onclick=loadModels;
+
+async function test(p){
+  try{
+    saveAll();say("keysMsg","جارٍ اختبار "+NAME[p]+"...");
+    const model=store.get("m_"+p)||DEF[p];
+    await ask(p,model,"أجب بكلمة واحدة.","قل: تم",500);
+    say("keysMsg",NAME[p]+" يعمل (النموذج: "+model+")");
+  }catch(e){say("keysMsg",e.message,true)}
+}
+$("testClaude").onclick=()=>test("claude");
+$("testGemini").onclick=()=>test("gemini");
+
+$("go").onclick=async()=>{
+  if(busy)return;
+  const req=$("ask").value.trim();
+  if(!req)return say("aiMsg","اكتب ما تريد تعديله",true);
+  const btn=$("go"),p=$("prov").value,model=$("model").value.trim()||DEF[p];
+  busy=true;btn.disabled=true;btn.textContent="جارٍ العمل...";say("aiMsg","");
+  try{
+    store.set("m_"+p,model);
+    const prompt="الكود الحالي:\n```html\n"+$("code").value+"\n```\n\nالطلب: "+req;
+    const r=await ask(p,model,SYS,prompt,p==="claude"?12000:30000);
+    if(r.cut)throw new AppErr("انقطع الرد لأن الكود طويل. لم يتغير كودك. اطلب تعديلاً أصغر");
+    const out=extract(r.text);
+    if(!out||out.indexOf("<")<0)throw new AppErr("لم يرجع النموذج كوداً صالحاً. لم يتغير كودك. أعد المحاولة. بداية الرد: "+r.text.slice(0,100));
+    prev=$("code").value;$("code").value=out;store.set("code",out);$("undo").disabled=false;
+    say("aiMsg","تم وضع النتيجة في تبويب «الكود». اضغط تشغيل هناك لرؤيتها");
+  }catch(e){say("aiMsg",e instanceof AppErr?e.message:"خطأ غير متوقع: "+e.message,true)}
+  busy=false;btn.disabled=false;btn.textContent="نفّذ التعديل";
+};
+$("undo").onclick=()=>{if(prev!==null){$("code").value=prev;store.set("code",prev);prev=null;$("undo").disabled=true;say("aiMsg","تم التراجع")}};
+
+// APK
+const GH="https://api.github.com";
+const fmt=s=>Math.floor(s/60)+":"+String(s%60).padStart(2,"0");
+function ghCfg(){
+  const t=store.get("k_ghtoken"),r=(store.get("k_ghrepo")||"").replace(/^https:\/\/github\.com\//,"").replace(/\/+$/,"");
+  if(!t||r.indexOf("/")<1)throw new AppErr("أدخل رمز GitHub واسم المستودع (مثل alkahli/apk-factory) في تبويب المفاتيح ثم اضغط حفظ");
+  return{t,r};
+}
+async function gh(path,opt){
+  const {t}=ghCfg();
+  let r;
+  try{r=await fetch(GH+path,{...(opt||{}),headers:{Authorization:"Bearer "+t,Accept:"application/vnd.github+json","X-GitHub-Api-Version":"2022-11-28","Content-Type":"application/json"}})}
+  catch(e){throw new AppErr("تعذر الاتصال بـ GitHub. تأكد من الإنترنت")}
+  const d=r.status===204?{}:await r.json().catch(()=>({}));
+  return{s:r.status,d};
+}
+function ghErr(x){
+  if(x.s===401)return "رمز GitHub غير صحيح أو منتهي";
+  if(x.s===403)return "الرمز لا يملك صلاحية كافية. فعّل Contents وActions بصلاحية Read and write على هذا المستودع";
+  if(x.s===404)return "المستودع غير موجود أو الرمز لا يصل إليه. تأكد من الاسم والصلاحيات";
+  return "خطأ GitHub ("+x.s+") "+((x.d&&x.d.message)||"");
+}
+function b64(s){const b=new TextEncoder().encode(s);let o="";for(let i=0;i<b.length;i+=8192)o+=String.fromCharCode.apply(null,b.subarray(i,i+8192));return btoa(o)}
+async function putFile(r,br,path,text){
+  const g=await gh("/repos/"+r+"/contents/"+path+"?ref="+encodeURIComponent(br));
+  const body={message:"build: "+path,content:b64(text),branch:br};
+  if(g.s===200)body.sha=g.d.sha;else if(g.s!==404)throw new AppErr(ghErr(g));
+  const p=await gh("/repos/"+r+"/contents/"+path,{method:"PUT",body:JSON.stringify(body)});
+  if(p.s!==200&&p.s!==201)throw new AppErr(ghErr(p));
+}
+function showLink(text,url,alt){
+  const a=document.createElement("a");a.className="btn"+(alt?" alt":"");a.href=url;a.target="_blank";a.rel="noopener";a.textContent=text;
+  $("apkLink").innerHTML="";$("apkLink").appendChild(a);
+}
+$("apname").value=store.get("apname");
+$("build").onclick=async()=>{
+  if(busy)return;
+  const code=$("code").value.trim();
+  if(!code)return say("apkMsg","تبويب «الكود» فارغ",true);
+  const name=($("apname").value.trim()||"تطبيقي").replace(/[<>&"'\\]/g,"");
+  store.set("apname",name);
+  busy=true;$("build").disabled=true;$("apkLink").innerHTML="";
+  try{
+    const {r}=ghCfg();
+    say("apkMsg","جارٍ فحص المستودع...");
+    const repo=await gh("/repos/"+r);
+    if(repo.s!==200)throw new AppErr(ghErr(repo));
+    const br=repo.d.default_branch;
+    let slug=name.toLowerCase().replace(/[^a-z0-9]/g,"");
+    if(!slug){let h=0;for(const c of name)h=(h*31+c.charCodeAt(0))|0;slug=Math.abs(h).toString(36)}
+    const cfg={appId:"com.alkahli.a"+slug,appName:name,webDir:"www",plugins:{CapacitorHttp:{enabled:true}}};
+    say("apkMsg","جارٍ رفع الكود...");
+    await putFile(r,br,"www/index.html",code);
+    await putFile(r,br,"capacitor.config.json",JSON.stringify(cfg,null,2));
+    const before=await gh("/repos/"+r+"/actions/runs?per_page=1");
+    const lastId=(before.d.workflow_runs&&before.d.workflow_runs[0]&&before.d.workflow_runs[0].id)||0;
+    const dsp=await gh("/repos/"+r+"/actions/workflows/build-apk.yml/dispatches",{method:"POST",body:JSON.stringify({ref:br})});
+    if(dsp.s!==204)throw new AppErr(dsp.s===404?"لم أجد ملف build-apk.yml في المستودع. ارفع محتويات apk-factory كاملة بما فيها مجلد .github":ghErr(dsp));
+    const t0=Date.now();let run=null;
+    while(!run&&Date.now()-t0<90000){
+      say("apkMsg","بدء البناء...");await sleep(4000);
+      const l=await gh("/repos/"+r+"/actions/runs?event=workflow_dispatch&per_page=5");
+      run=(l.d.workflow_runs||[]).find(x=>x.id>lastId)||null;
+    }
+    if(!run)throw new AppErr("لم يبدأ البناء. افتح تبويب Actions في المستودع وتأكد أنها مفعّلة");
+    for(;;){
+      const s=await gh("/repos/"+r+"/actions/runs/"+run.id);
+      if(s.s!==200)throw new AppErr(ghErr(s));
+      if(s.d.status==="completed"){
+        if(s.d.conclusion!=="success"){showLink("فتح سجل الخطأ",s.d.html_url,true);throw new AppErr("فشل البناء ("+s.d.conclusion+"). افتح السجل لمعرفة السبب")}
+        break;
+      }
+      if(Date.now()-t0>1500000)throw new AppErr("استغرق البناء أكثر من 25 دقيقة. تحقق من تبويب Actions");
+      say("apkMsg","جارٍ البناء... "+fmt(Math.round((Date.now()-t0)/1000)));
+      await sleep(8000);
+    }
+    const rel=await gh("/repos/"+r+"/releases/tags/run-"+run.id);
+    const asset=rel.s===200&&rel.d.assets&&rel.d.assets[0];
+    if(!asset)throw new AppErr("اكتمل البناء لكن لم أجد ملف APK في Releases المستودع");
+    say("apkMsg","اكتمل البناء. اضغط الزر لتنزيل التطبيق ثم افتح الملف لتثبيته");
+    showLink("تنزيل APK",asset.browser_download_url);
+  }catch(e){say("apkMsg",e instanceof AppErr?e.message:"خطأ غير متوقع: "+e.message,true)}
+  busy=false;$("build").disabled=false;
+};
+</script>
+</body>
+</html>
