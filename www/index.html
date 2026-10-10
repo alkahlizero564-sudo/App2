@@ -33,8 +33,14 @@ details{margin-top:14px;font-size:13px;color:var(--mute)}
 pre{direction:ltr;text-align:left;background:var(--code);color:var(--codeink);padding:10px;border-radius:10px;overflow-x:auto;font-size:12px}
 a.btn{display:block;text-align:center;text-decoration:none;font-weight:600;border-radius:10px;padding:12px 16px;background:var(--acc);color:var(--accink);margin-top:12px}
 a.btn.alt{background:transparent;color:var(--ink);border:1px solid var(--line)}
+details.app{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-top:14px;font-size:14px;color:var(--ink)}
+details.app summary{font-weight:700;font-size:16px;cursor:pointer}
+details.app input,details.app textarea{background:var(--bg)}
+details.app .code{background:var(--code)}
+.chk{display:flex;align-items:center;gap:8px;color:var(--ink);font-size:14px;margin:0}
+.chk input{width:auto}
 nav{display:flex;border-top:1px solid var(--line);background:var(--card);padding-bottom:env(safe-area-inset-bottom,0)}
-nav button{flex:1;background:none;color:var(--mute);border-radius:0;padding:12px 4px;font-size:14px}
+nav button{flex:1;background:none;color:var(--mute);border-radius:0;padding:12px 2px;font-size:13px}
 nav button.on{color:var(--acc);box-shadow:inset 0 3px 0 var(--acc)}
 :focus-visible{outline:2px solid var(--acc);outline-offset:2px}
 </style>
@@ -78,25 +84,21 @@ create policy "open" on projects
   </details>
 </section>
 
-<section id="edit">
-  <h2>الكود</h2>
-  <textarea id="code" class="code" spellcheck="false" placeholder="اكتب HTML/CSS/JS هنا أو اطلب من الذكاء الاصطناعي من تبويب «تعديل»"></textarea>
-  <div class="row">
-    <button id="run">تشغيل</button>
-    <button class="alt" id="clear">مسح</button>
-  </div>
-  <iframe id="out" sandbox="allow-scripts allow-forms allow-modals" title="الناتج" hidden></iframe>
-  <label>اسم المشروع</label>
-  <input id="pname" class="ltr" placeholder="my-site">
-  <div class="row">
-    <button class="alt" id="sbSave">حفظ في Supabase</button>
-    <button class="alt" id="sbLoad">فتح من Supabase</button>
-  </div>
-  <div class="msg" id="codeMsg"></div>
+<section id="apps">
+  <h2>تطبيقاتي</h2>
+  <p class="note">لكل تطبيق خانة اسم وخانة كود، ويُبنى كل واحد كملف APK مستقل.</p>
+  <label class="chk"><input type="checkbox" id="link" checked> ربط التطبيقين بـ Supabase</label>
+  <p class="note">عند التفعيل يُضاف إلى كل تطبيق المتغيران window.SUPABASE_URL وwindow.SUPABASE_KEY. ضع في المفاتيح مفتاح anon فقط، وليس service_role أبداً.</p>
+  <div id="slots"></div>
 </section>
 
 <section id="ai">
   <h2>تعديل بالذكاء الاصطناعي</h2>
+  <label>أي تطبيق تعدّل؟</label>
+  <select id="aiApp">
+    <option value="1">التطبيق الأول</option>
+    <option value="2">التطبيق الثاني</option>
+  </select>
   <label>النموذج</label>
   <select id="prov">
     <option value="claude">Claude</option>
@@ -113,17 +115,17 @@ create policy "open" on projects
     <button class="alt" id="undo" disabled>تراجع</button>
   </div>
   <div class="msg" id="aiMsg"></div>
-  <p class="note">الكود الحالي يُرسل مع طلبك، والنتيجة تُوضع مباشرة في تبويب «الكود».</p>
+  <p class="note">الكود الحالي يُرسل مع طلبك، والنتيجة تُوضع مباشرة في كود التطبيق داخل تبويب «تطبيقاتي».</p>
 </section>
 
 <section id="apk">
   <h2>بناء APK</h2>
-  <p class="note">يحوّل الكود الموجود في تبويب «الكود» إلى تطبيق أندرويد عبر GitHub. يستغرق نحو 5 دقائق، فابقَ في هذه الصفحة.</p>
-  <label>اسم التطبيق</label>
-  <input id="apname" placeholder="تطبيقي">
-  <div class="row"><button id="build">ابنِ APK</button></div>
+  <p class="note">كل تطبيق يُبنى كملف APK مستقل ويُثبَّت كتطبيق منفصل على هاتفك. البناء يستغرق نحو 5 دقائق لكل تطبيق، فابقَ في هذه الصفحة.</p>
+  <div class="row"><button id="b1">ابنِ التطبيق الأول</button><button id="b2">ابنِ التطبيق الثاني</button></div>
+  <div class="row"><button class="alt" id="b12">ابنِ الاثنين بالتتابع</button></div>
   <div class="msg" id="apkMsg"></div>
-  <div id="apkLink"></div>
+  <div id="l1"></div>
+  <div id="l2"></div>
   <p class="note">عند فتح الملف يطلب أندرويد السماح بتثبيت التطبيقات من هذا المصدر. وافق مرة واحدة من شاشة الإعدادات التي تظهر.</p>
 </section>
 
@@ -131,7 +133,7 @@ create policy "open" on projects
 
 <nav>
   <button data-t="keys" class="on">المفاتيح</button>
-  <button data-t="edit">الكود</button>
+  <button data-t="apps">تطبيقاتي</button>
   <button data-t="ai">تعديل</button>
   <button data-t="apk">APK</button>
 </nav>
@@ -144,24 +146,13 @@ const store={
 };
 const KEYS=["claude","gemini","sburl","sbkey","ghtoken","ghrepo"];
 KEYS.forEach(k=>$("k_"+k).value=store.get("k_"+k));
-$("code").value=store.get("code");
-$("pname").value=store.get("pname");
-
 function say(id,t,err){const m=$(id);m.textContent=t;m.className="msg"+(err?" err":"")}
-
-// tabs
+const goTab=t=>document.querySelector('nav button[data-t="'+t+'"]').click();
 document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{
   document.querySelectorAll("nav button,section").forEach(e=>e.classList.remove("on"));
   b.classList.add("on");$(b.dataset.t).classList.add("on");
 });
-
 $("saveKeys").onclick=()=>{KEYS.forEach(k=>store.set("k_"+k,$("k_"+k).value.trim()));say("keysMsg","تم حفظ المفاتيح")};
-$("code").oninput=()=>store.set("code",$("code").value);
-$("pname").oninput=()=>store.set("pname",$("pname").value);
-
-// run
-$("run").onclick=()=>{$("out").hidden=false;$("out").srcdoc=$("code").value};
-$("clear").onclick=()=>{if(confirm("مسح الكود؟")){$("code").value="";store.set("code","");$("out").hidden=true}};
 
 // supabase
 function sb(){
@@ -174,26 +165,11 @@ $("testSb").onclick=async()=>{
     say("keysMsg",r.ok?"Supabase متصل والجدول موجود":"فشل ("+r.status+"): "+(await r.text()).slice(0,120),!r.ok)}
   catch(e){say("keysMsg",e.message,true)}
 };
-$("sbSave").onclick=async()=>{
-  try{const {u,h}=sb();const name=$("pname").value.trim();if(!name)throw new Error("اكتب اسم المشروع");
-    const r=await fetch(u+"/rest/v1/projects?on_conflict=name",{method:"POST",headers:{...h,Prefer:"resolution=merge-duplicates"},body:JSON.stringify({name,code:$("code").value,updated_at:new Date().toISOString()})});
-    say("codeMsg",r.ok?"تم الحفظ":"فشل: "+(await r.text()).slice(0,120),!r.ok)}
-  catch(e){say("codeMsg",e.message,true)}
-};
-$("sbLoad").onclick=async()=>{
-  try{const {u,h}=sb();const name=$("pname").value.trim();if(!name)throw new Error("اكتب اسم المشروع");
-    const r=await fetch(u+"/rest/v1/projects?name=eq."+encodeURIComponent(name)+"&select=code",{headers:h});
-    const d=await r.json();if(!r.ok)throw new Error(JSON.stringify(d).slice(0,120));
-    if(!d.length)throw new Error("لا يوجد مشروع بهذا الاسم");
-    $("code").value=d[0].code;store.set("code",d[0].code);say("codeMsg","تم الفتح")}
-  catch(e){say("codeMsg",e.message,true)}
-};
-
 // AI
 const NAME={claude:"Claude",gemini:"Gemini"};
-const SYS="أنت محرر كود. ستستلم الكود الحالي وطلب تعديل. أعد الكود الكامل بعد التعديل داخل كتلة ```html واحدة فقط، ملف HTML واحد مستقل يحوي CSS وJS. لا تكتب أي شرح خارج الكتلة. إن كان الكود الحالي فارغاً فابنِ من الصفر.";
-const DEF={claude:"claude-sonnet-5-5",gemini:"gemini-2.5-flash"};
-const LIST={claude:["claude-sonnet-5-5","claude-opus-5-5","claude-haiku-5-5"],gemini:["gemini-2.5-flash","gemini-2.5-pro","gemini-2.5-flash-lite"]};
+const SYS="أنت محرر كود. ستستلم الكود الحالي وطلب تعديل. أعد الكود الكامل بعد التعديل داخل كتلة ```html واحدة فقط، ملف HTML واحد مستقل يحوي CSS وJS. لا تكتب أي شرح خارج الكتلة. إن كان الكود الحالي فارغاً فابنِ من الصفر. إن احتاج التطبيق قاعدة بيانات فالمتغيران window.SUPABASE_URL وwindow.SUPABASE_KEY معرّفان مسبقاً، فاستخدمهما مع واجهة Supabase REST عبر fetch ولا تكتب أي مفتاح داخل الكود.";
+const DEF={claude:"claude-sonnet-5-5",gemini:"gemini-3.5-flash"};
+const LIST={claude:["claude-sonnet-5-5","claude-opus-5-5","claude-haiku-5-5"],gemini:["gemini-3.5-flash","gemini-3.5-flash-lite","gemini-3.1-flash-lite"]};
 let prev=null,busy=false;
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 class AppErr extends Error{}
@@ -291,25 +267,32 @@ async function test(p){
 $("testClaude").onclick=()=>test("claude");
 $("testGemini").onclick=()=>test("gemini");
 
+const prevs={1:null,2:null};
+$("aiApp").onchange=()=>{$("undo").disabled=prevs[$("aiApp").value]===null};
 $("go").onclick=async()=>{
   if(busy)return;
-  const req=$("ask").value.trim();
+  const i=$("aiApp").value,req=$("ask").value.trim();
   if(!req)return say("aiMsg","اكتب ما تريد تعديله",true);
   const btn=$("go"),p=$("prov").value,model=$("model").value.trim()||DEF[p];
   busy=true;btn.disabled=true;btn.textContent="جارٍ العمل...";say("aiMsg","");
   try{
     store.set("m_"+p,model);
-    const prompt="الكود الحالي:\n```html\n"+$("code").value+"\n```\n\nالطلب: "+req;
+    const old=$("c"+i).value;
+    const prompt="الكود الحالي:\n```html\n"+old+"\n```\n\nالطلب: "+req;
     const r=await ask(p,model,SYS,prompt,p==="claude"?12000:30000);
     if(r.cut)throw new AppErr("انقطع الرد لأن الكود طويل. لم يتغير كودك. اطلب تعديلاً أصغر");
     const out=extract(r.text);
     if(!out||out.indexOf("<")<0)throw new AppErr("لم يرجع النموذج كوداً صالحاً. لم يتغير كودك. أعد المحاولة. بداية الرد: "+r.text.slice(0,100));
-    prev=$("code").value;$("code").value=out;store.set("code",out);$("undo").disabled=false;
-    say("aiMsg","تم وضع النتيجة في تبويب «الكود». اضغط تشغيل هناك لرؤيتها");
+    prevs[i]=old;$("c"+i).value=out;store.set("c"+i,out);
+    if($("aiApp").value===i)$("undo").disabled=false;
+    say("aiMsg","تم وضع النتيجة في كود "+TITLE[i]+" داخل تبويب «تطبيقاتي». اضغط تشغيل هناك لرؤيتها");
   }catch(e){say("aiMsg",e instanceof AppErr?e.message:"خطأ غير متوقع: "+e.message,true)}
   busy=false;btn.disabled=false;btn.textContent="نفّذ التعديل";
 };
-$("undo").onclick=()=>{if(prev!==null){$("code").value=prev;store.set("code",prev);prev=null;$("undo").disabled=true;say("aiMsg","تم التراجع")}};
+$("undo").onclick=()=>{
+  const i=$("aiApp").value;
+  if(prevs[i]!==null){$("c"+i).value=prevs[i];store.set("c"+i,prevs[i]);prevs[i]=null;$("undo").disabled=true;say("aiMsg","تم التراجع في "+TITLE[i])}
+};
 
 // APK
 const GH="https://api.github.com";
@@ -341,60 +324,126 @@ async function putFile(r,br,path,text){
   const p=await gh("/repos/"+r+"/contents/"+path,{method:"PUT",body:JSON.stringify(body)});
   if(p.s!==200&&p.s!==201)throw new AppErr(ghErr(p));
 }
-function showLink(text,url,alt){
+function showLink(i,text,url,alt){
   const a=document.createElement("a");a.className="btn"+(alt?" alt":"");a.href=url;a.target="_blank";a.rel="noopener";a.textContent=text;
-  $("apkLink").innerHTML="";$("apkLink").appendChild(a);
+  $("l"+i).innerHTML="";$("l"+i).appendChild(a);
 }
-$("apname").value=store.get("apname");
-$("build").onclick=async()=>{
+async function buildOne(i){
+  const code=$("c"+i).value.trim();
+  if(!code)throw new AppErr("كود "+TITLE[i]+" فارغ");
+  const name=($("n"+i).value.trim()||TITLE[i]).replace(/[<>&"'\\]/g,"");
+  const pre=name+": ";
+  $("l"+i).innerHTML="";
+  const {r}=ghCfg();
+  say("apkMsg",pre+"جارٍ فحص المستودع...");
+  const repo=await gh("/repos/"+r);
+  if(repo.s!==200)throw new AppErr(ghErr(repo));
+  const br=repo.d.default_branch;
+  const cfg={appId:"com.alkahli.app"+i,appName:name,webDir:"www",plugins:{CapacitorHttp:{enabled:true}}};
+  say("apkMsg",pre+"جارٍ رفع الكود...");
+  await putFile(r,br,"www/index.html",withEnv(code));
+  await putFile(r,br,"capacitor.config.json",JSON.stringify(cfg,null,2));
+  const before=await gh("/repos/"+r+"/actions/runs?per_page=1");
+  const lastId=(before.d.workflow_runs&&before.d.workflow_runs[0]&&before.d.workflow_runs[0].id)||0;
+  const dsp=await gh("/repos/"+r+"/actions/workflows/build-apk.yml/dispatches",{method:"POST",body:JSON.stringify({ref:br})});
+  if(dsp.s!==204)throw new AppErr(dsp.s===404?"لم أجد ملف build-apk.yml في المستودع. ارفع ملفات apk-factory كاملة بما فيها مجلد .github":ghErr(dsp));
+  const t0=Date.now();let run=null;
+  while(!run&&Date.now()-t0<90000){
+    say("apkMsg",pre+"بدء البناء...");await sleep(4000);
+    const l=await gh("/repos/"+r+"/actions/runs?event=workflow_dispatch&per_page=5");
+    run=(l.d.workflow_runs||[]).find(x=>x.id>lastId)||null;
+  }
+  if(!run)throw new AppErr("لم يبدأ البناء. افتح تبويب Actions في المستودع وتأكد أنها مفعّلة");
+  for(;;){
+    const s=await gh("/repos/"+r+"/actions/runs/"+run.id);
+    if(s.s!==200)throw new AppErr(ghErr(s));
+    if(s.d.status==="completed"){
+      if(s.d.conclusion!=="success"){showLink(i,"فتح سجل الخطأ",s.d.html_url,true);throw new AppErr(pre+"فشل البناء ("+s.d.conclusion+"). افتح السجل لمعرفة السبب")}
+      break;
+    }
+    if(Date.now()-t0>1500000)throw new AppErr("استغرق البناء أكثر من 25 دقيقة. تحقق من تبويب Actions");
+    say("apkMsg",pre+"جارٍ البناء... "+fmt(Math.round((Date.now()-t0)/1000)));
+    await sleep(8000);
+  }
+  const rel=await gh("/repos/"+r+"/releases/tags/run-"+run.id);
+  const asset=rel.s===200&&rel.d.assets&&rel.d.assets[0];
+  if(!asset)throw new AppErr("اكتمل البناء لكن لم أجد ملف APK في Releases المستودع");
+  showLink(i,"تنزيل APK: "+name,asset.browser_download_url);
+}
+const BTNS=["b1","b2","b12"];
+async function runBuilds(list){
   if(busy)return;
-  const code=$("code").value.trim();
-  if(!code)return say("apkMsg","تبويب «الكود» فارغ",true);
-  const name=($("apname").value.trim()||"تطبيقي").replace(/[<>&"'\\]/g,"");
-  store.set("apname",name);
-  busy=true;$("build").disabled=true;$("apkLink").innerHTML="";
+  busy=true;BTNS.forEach(x=>$(x).disabled=true);
   try{
-    const {r}=ghCfg();
-    say("apkMsg","جارٍ فحص المستودع...");
-    const repo=await gh("/repos/"+r);
-    if(repo.s!==200)throw new AppErr(ghErr(repo));
-    const br=repo.d.default_branch;
-    let slug=name.toLowerCase().replace(/[^a-z0-9]/g,"");
-    if(!slug){let h=0;for(const c of name)h=(h*31+c.charCodeAt(0))|0;slug=Math.abs(h).toString(36)}
-    const cfg={appId:"com.alkahli.a"+slug,appName:name,webDir:"www",plugins:{CapacitorHttp:{enabled:true}}};
-    say("apkMsg","جارٍ رفع الكود...");
-    await putFile(r,br,"www/index.html",code);
-    await putFile(r,br,"capacitor.config.json",JSON.stringify(cfg,null,2));
-    const before=await gh("/repos/"+r+"/actions/runs?per_page=1");
-    const lastId=(before.d.workflow_runs&&before.d.workflow_runs[0]&&before.d.workflow_runs[0].id)||0;
-    const dsp=await gh("/repos/"+r+"/actions/workflows/build-apk.yml/dispatches",{method:"POST",body:JSON.stringify({ref:br})});
-    if(dsp.s!==204)throw new AppErr(dsp.s===404?"لم أجد ملف build-apk.yml في المستودع. ارفع محتويات apk-factory كاملة بما فيها مجلد .github":ghErr(dsp));
-    const t0=Date.now();let run=null;
-    while(!run&&Date.now()-t0<90000){
-      say("apkMsg","بدء البناء...");await sleep(4000);
-      const l=await gh("/repos/"+r+"/actions/runs?event=workflow_dispatch&per_page=5");
-      run=(l.d.workflow_runs||[]).find(x=>x.id>lastId)||null;
-    }
-    if(!run)throw new AppErr("لم يبدأ البناء. افتح تبويب Actions في المستودع وتأكد أنها مفعّلة");
-    for(;;){
-      const s=await gh("/repos/"+r+"/actions/runs/"+run.id);
-      if(s.s!==200)throw new AppErr(ghErr(s));
-      if(s.d.status==="completed"){
-        if(s.d.conclusion!=="success"){showLink("فتح سجل الخطأ",s.d.html_url,true);throw new AppErr("فشل البناء ("+s.d.conclusion+"). افتح السجل لمعرفة السبب")}
-        break;
-      }
-      if(Date.now()-t0>1500000)throw new AppErr("استغرق البناء أكثر من 25 دقيقة. تحقق من تبويب Actions");
-      say("apkMsg","جارٍ البناء... "+fmt(Math.round((Date.now()-t0)/1000)));
-      await sleep(8000);
-    }
-    const rel=await gh("/repos/"+r+"/releases/tags/run-"+run.id);
-    const asset=rel.s===200&&rel.d.assets&&rel.d.assets[0];
-    if(!asset)throw new AppErr("اكتمل البناء لكن لم أجد ملف APK في Releases المستودع");
-    say("apkMsg","اكتمل البناء. اضغط الزر لتنزيل التطبيق ثم افتح الملف لتثبيته");
-    showLink("تنزيل APK",asset.browser_download_url);
+    for(const i of list)await buildOne(i);
+    say("apkMsg",list.length>1?"اكتمل بناء التطبيقين. نزّل كل واحد وافتحه لتثبيته":"اكتمل البناء. اضغط زر التنزيل ثم افتح الملف لتثبيته");
   }catch(e){say("apkMsg",e instanceof AppErr?e.message:"خطأ غير متوقع: "+e.message,true)}
-  busy=false;$("build").disabled=false;
-};
+  busy=false;BTNS.forEach(x=>$(x).disabled=false);
+}
+$("b1").onclick=()=>runBuilds([1]);
+$("b2").onclick=()=>runBuilds([2]);
+$("b12").onclick=()=>runBuilds([1,2]);
+
+// APPS
+const TITLE={1:"التطبيق الأول",2:"التطبيق الثاني"};
+$("link").checked=store.get("link")!=="0";
+$("link").onchange=()=>store.set("link",$("link").checked?"1":"0");
+function withEnv(code){
+  if(!$("link").checked)return code;
+  const u=store.get("k_sburl").replace(/\/+$/,""),k=store.get("k_sbkey");
+  if(!u||!k)return code;
+  const j=v=>JSON.stringify(v).replace(/</g,"\\u003c");
+  const tag="<script>window.SUPABASE_URL="+j(u)+";window.SUPABASE_KEY="+j(k)+";<\/script>";
+  if(/<head[^>]*>/i.test(code))return code.replace(/<head[^>]*>/i,m=>m+tag);
+  const d=code.match(/^\s*<!doctype[^>]*>/i);
+  return d?d[0]+tag+code.slice(d[0].length):tag+code;
+}
+function slotHTML(i){
+  return '<details class="app"'+(i===1?' open':'')+'><summary>'+TITLE[i]+' <span id="t'+i+'"></span></summary>'+
+  '<label>اسم التطبيق</label><input id="n'+i+'" placeholder="مثال: متجري">'+
+  '<label>الكود</label><textarea id="c'+i+'" class="code" spellcheck="false" placeholder="الصق كود HTML هنا، أو اضغط تعديل بالذكاء لبنائه"></textarea>'+
+  '<div class="row"><button id="run'+i+'">تشغيل</button><button class="alt" id="ai'+i+'">تعديل بالذكاء</button></div>'+
+  '<iframe id="o'+i+'" sandbox="allow-scripts allow-forms allow-modals" title="الناتج" hidden></iframe>'+
+  '<div class="row"><button class="alt" id="ss'+i+'">حفظ في Supabase</button><button class="alt" id="sl'+i+'">فتح من Supabase</button></div>'+
+  '<div class="msg" id="m'+i+'"></div></details>';
+}
+const supErr=e=>e instanceof TypeError?"تعذر الاتصال بـ Supabase. تأكد من الرابط والإنترنت":e.message;
+async function sbSaveApp(i){
+  try{
+    const {u,h}=sb();const name=$("n"+i).value.trim(),code=$("c"+i).value;
+    if(!name)throw new Error("اكتب اسم التطبيق");
+    if(!code.trim())throw new Error("الكود فارغ");
+    say("m"+i,"جارٍ الحفظ...");
+    const r=await fetch(u+"/rest/v1/projects?on_conflict=name",{method:"POST",headers:{...h,Prefer:"resolution=merge-duplicates"},body:JSON.stringify({name,code,updated_at:new Date().toISOString()})});
+    say("m"+i,r.ok?"تم الحفظ في Supabase":"فشل: "+(await r.text()).slice(0,120),!r.ok);
+  }catch(e){say("m"+i,supErr(e),true)}
+}
+async function sbLoadApp(i){
+  try{
+    const {u,h}=sb();const name=$("n"+i).value.trim();
+    if(!name)throw new Error("اكتب اسم التطبيق");
+    say("m"+i,"جارٍ الفتح...");
+    const r=await fetch(u+"/rest/v1/projects?name=eq."+encodeURIComponent(name)+"&select=code",{headers:h});
+    const d=await r.json();if(!r.ok)throw new Error(JSON.stringify(d).slice(0,120));
+    if(!d.length)throw new Error("لا يوجد تطبيق بهذا الاسم في Supabase");
+    $("c"+i).value=d[0].code;store.set("c"+i,d[0].code);say("m"+i,"تم الفتح من Supabase");
+  }catch(e){say("m"+i,supErr(e),true)}
+}
+if(!store.get("c1")&&store.get("code"))store.set("c1",store.get("code"));
+$("slots").innerHTML=slotHTML(1)+slotHTML(2);
+const upT=i=>{const n=$("n"+i).value.trim();$("t"+i).textContent=n?"- "+n:""};
+[1,2].forEach(i=>{
+  $("n"+i).value=store.get("n"+i);$("c"+i).value=store.get("c"+i);upT(i);
+  $("n"+i).oninput=()=>{store.set("n"+i,$("n"+i).value);upT(i)};
+  $("c"+i).oninput=()=>store.set("c"+i,$("c"+i).value);
+  $("run"+i).onclick=()=>{
+    if(!$("c"+i).value.trim())return say("m"+i,"الكود فارغ",true);
+    say("m"+i,"");$("o"+i).hidden=false;$("o"+i).srcdoc=withEnv($("c"+i).value);
+  };
+  $("ai"+i).onclick=()=>{$("aiApp").value=String(i);$("undo").disabled=prevs[i]===null;goTab("ai")};
+  $("ss"+i).onclick=()=>sbSaveApp(i);
+  $("sl"+i).onclick=()=>sbLoadApp(i);
+});
 </script>
 </body>
-    </html>
+  </html>
